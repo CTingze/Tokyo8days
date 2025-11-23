@@ -16,8 +16,14 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #1a1a1a;
             -webkit-tap-highlight-color: transparent;
-            overscroll-behavior-y: none; /* 防止滑動時觸發瀏覽器重新整理 */
+            overscroll-behavior-y: none;
         }
+        
+        /* 關鍵設定：允許垂直捲動，但鎖定水平滑動給 JS 控制 */
+        .touch-area {
+            touch-action: pan-y; 
+        }
+
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
@@ -31,17 +37,17 @@
         .slide-left-enter-active, .slide-left-leave-active {
             transition: all 0.3s ease-out;
         }
-        .slide-left-enter-from { opacity: 0; transform: translateX(20px); }
-        .slide-left-leave-to { opacity: 0; transform: translateX(-20px); }
+        .slide-left-enter-from { opacity: 0; transform: translateX(50px); }
+        .slide-left-leave-to { opacity: 0; transform: translateX(-50px); }
 
         /* 上一天 (向右滑，內容從左邊進來) */
         .slide-right-enter-active, .slide-right-leave-active {
             transition: all 0.3s ease-out;
         }
-        .slide-right-enter-from { opacity: 0; transform: translateX(-20px); }
-        .slide-right-leave-to { opacity: 0; transform: translateX(20px); }
+        .slide-right-enter-from { opacity: 0; transform: translateX(-50px); }
+        .slide-right-leave-to { opacity: 0; transform: translateX(50px); }
 
-        /* 淡入動畫 (給內部元素用) */
+        /* 淡入動畫 */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -53,24 +59,26 @@
 </head>
 <body>
 
-<!-- 加入 touch 事件監聽 -->
+<!-- 
+    綁定 touchstart 與 touchend 事件 
+    touch-area 類別是用來設定 CSS touch-action
+-->
 <div id="app" 
      @touchstart="touchStart" 
      @touchend="touchEnd"
-     class="max-w-md mx-auto min-h-screen relative pb-24 overflow-hidden bg-gray-900 select-none">
+     class="touch-area max-w-md mx-auto min-h-screen relative pb-24 overflow-hidden bg-gray-900 select-none">
 
-    <!-- ★ 動態背景層 (固定在背後) -->
+    <!-- ★ 動態背景層 -->
     <div class="fixed inset-0 z-0 bg-cover bg-center transition-all duration-700 ease-in-out"
          :style="{ backgroundImage: `url(${currentDayData.bgImage})` }">
-        <!-- 黑色半透明遮罩 -->
         <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-[2px]"></div>
     </div>
 
-    <!-- ★ 內容切換區 (加上 Transition 包裹) -->
+    <!-- ★ 內容切換區 -->
     <div class="relative z-10 min-h-screen">
         <transition :name="transitionName" mode="out-in">
-            <!-- 必須加 key，Vue 才知道內容換了要跑動畫 -->
-            <div :key="currentDayIndex">
+            <!-- key 改變時觸發動畫 -->
+            <div :key="currentDayIndex" class="w-full">
                 
                 <!-- 1. Hero Section -->
                 <div class="bg-gradient-to-r from-red-600/90 to-orange-600/90 backdrop-blur-md text-white p-6 rounded-b-3xl shadow-lg sticky top-0 z-20">
@@ -103,7 +111,7 @@
                 <div class="p-4 mt-2 space-y-2">
                     <div v-for="(event, index) in currentDayData.events" :key="index" 
                          class="relative flex gap-4 animate-fade-in"
-                         :style="{ animationDelay: `${index * 0.1}s` }"
+                         :style="{ animationDelay: `${index * 0.05}s` }"
                          :class="{ 'last-item': index === currentDayData.events.length - 1 }">
                         
                         <!-- 左側時間與圖示 -->
@@ -142,11 +150,16 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- 底部提示文字 -->
+                <div class="text-center text-gray-400 text-xs pb-4 opacity-50">
+                    <i class="fas fa-arrows-left-right mr-1"></i> 左右滑動切換日期
+                </div>
             </div>
         </transition>
     </div>
 
-    <!-- 3. 底部導航欄 (保留按鈕作為視覺輔助) -->
+    <!-- 3. 底部導航欄 -->
     <div class="fixed bottom-0 w-full max-w-md bg-white/95 backdrop-blur border-t border-gray-200 flex justify-between items-center px-4 py-3 z-30 safe-bottom shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
         <button @click="prevDay" :disabled="currentDayIndex === 0"
                 class="p-2 rounded-full hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-gray-600">
@@ -159,7 +172,6 @@
                 {{ currentDayData.date.split(' ')[0] }}
                 <i class="fas fa-caret-up ml-1"></i>
             </span>
-            <span class="text-[10px] text-gray-400 mt-0.5">左右滑動切換</span>
         </div>
 
         <button @click="nextDay" :disabled="currentDayIndex === tripData.length - 1"
@@ -168,7 +180,7 @@
         </button>
     </div>
 
-    <!-- Popup Components (保持不變) -->
+    <!-- Popup Components -->
     <div v-if="showDaySelector" class="fixed inset-0 bg-black/50 z-40 flex items-end justify-center" @click="showDaySelector = false">
         <div class="bg-white w-full max-w-md rounded-t-2xl p-4 max-h-[70vh] overflow-y-auto safe-bottom" @click.stop>
             <h3 class="text-center font-bold text-gray-700 mb-4">選擇日期</h3>
@@ -201,32 +213,38 @@ createApp({
         const showModal = ref(false);
         const modalContent = ref('');
         const showDaySelector = ref(false);
-        const transitionName = ref('slide-left'); // 控制滑動方向
+        const transitionName = ref('slide-left');
 
-        // 觸控變數
+        // --- 滑動邏輯 ---
         const touchStartX = ref(0);
-        const touchEndX = ref(0);
+        const touchStartY = ref(0);
 
         const touchStart = (e) => {
-            touchStartX.value = e.changedTouches[0].screenX;
+            // 記錄按下的位置
+            touchStartX.value = e.touches[0].clientX;
+            touchStartY.value = e.touches[0].clientY;
         };
 
         const touchEnd = (e) => {
-            touchEndX.value = e.changedTouches[0].screenX;
-            handleSwipe();
-        };
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            
+            const diffX = touchStartX.value - touchEndX;
+            const diffY = touchStartY.value - touchEndY;
 
-        const handleSwipe = () => {
-            const threshold = 50; // 滑動超過 50px 才觸發
-            const swipeDistance = touchStartX.value - touchEndX.value;
-
-            if (Math.abs(swipeDistance) > threshold) {
-                if (swipeDistance > 0) {
-                    // 向左滑 -> 下一天
-                    nextDay();
-                } else {
-                    // 向右滑 -> 上一天
-                    prevDay();
+            // 1. 判斷是否為水平滑動 (X軸移動距離 > Y軸移動距離)
+            // 這是為了防止在上下捲動頁面時誤觸切換
+            if (Math.abs(diffX) > Math.abs(diffY)) {
+                
+                // 2. 判斷滑動距離是否足夠 (大於 50px)
+                if (Math.abs(diffX) > 50) {
+                    if (diffX > 0) {
+                        // 向左滑 (diffX > 0) -> 下一天
+                        nextDay();
+                    } else {
+                        // 向右滑 (diffX < 0) -> 上一天
+                        prevDay();
+                    }
                 }
             }
         };
@@ -240,7 +258,6 @@ createApp({
             return map[type] || 'bg-gray-400';
         };
 
-        // ------------------ 行程資料 (保持不變) ------------------
         const tripData = [
             {
                 date: "11/27 (四)",
@@ -362,12 +379,11 @@ createApp({
             }
         ];
 
-        // 邏輯處理
         const currentDayData = computed(() => tripData[currentDayIndex.value]);
 
         const nextDay = () => {
             if (currentDayIndex.value < tripData.length - 1) {
-                transitionName.value = 'slide-left'; // 設定動畫方向
+                transitionName.value = 'slide-left'; // 動畫向左滑
                 currentDayIndex.value++;
                 window.scrollTo(0, 0);
             }
@@ -375,7 +391,7 @@ createApp({
 
         const prevDay = () => {
             if (currentDayIndex.value > 0) {
-                transitionName.value = 'slide-right'; // 設定動畫方向
+                transitionName.value = 'slide-right'; // 動畫向右滑
                 currentDayIndex.value--;
                 window.scrollTo(0, 0);
             }
@@ -420,5 +436,3 @@ createApp({
 </script>
 </body>
 </html>
-
-
