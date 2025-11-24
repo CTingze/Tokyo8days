@@ -13,7 +13,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #1a1a1a;
             -webkit-tap-highlight-color: transparent;
-            overscroll-behavior-y: none; /* 防止下拉重整干擾 */
+            overscroll-behavior-y: none;
         }
         
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -26,7 +26,6 @@
         }
         .last-item .timeline-line { display: none; }
         
-        /* 切換動畫 */
         .slide-left-enter-active, .slide-left-leave-active,
         .slide-right-enter-active, .slide-right-leave-active {
             transition: all 0.3s ease-out;
@@ -55,7 +54,7 @@
         <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-[2px]"></div>
     </div>
 
-    <!-- 內容區：加入觸控監聽 -->
+    <!-- 內容區 -->
     <div class="relative z-10 min-h-screen" 
          @touchstart="onTouchStart" 
          @touchend="onTouchEnd">
@@ -63,8 +62,7 @@
         <transition :name="transitionName" mode="out-in">
             <div :key="currentDayIndex" class="w-full">
                 
-                <!-- 1. 頂部資訊卡 (日期置頂) -->
-                <!-- 修改：z-40 確保層級最高，backdrop-blur-xl 加強模糊，確保滑動時日期清楚可見 -->
+                <!-- 1. 頂部資訊卡 -->
                 <div class="bg-gradient-to-r from-red-600/95 to-orange-600/95 backdrop-blur-xl text-white p-6 rounded-b-3xl shadow-xl sticky top-0 z-40 transition-all duration-300 border-b border-white/10">
                     <div class="flex justify-between items-start">
                         <div>
@@ -109,15 +107,16 @@
                             </div>
                             <p v-if="event.desc" class="text-gray-500 text-sm mt-2 leading-relaxed whitespace-pre-line">{{ event.desc }}</p>
 
-                            <!-- 新手須知按鈕 -->
-                            <div v-if="event.imageBtn" class="mt-3">
-                                <button @click.stop="openImagePreview(event.imageBtn.url)" 
+                            <!-- ★★★ 修改處：支援多顆粉紅色圖片按鈕 ★★★ -->
+                            <div v-if="event.imageBtns || event.imageBtn" class="mt-3 space-y-2">
+                                <button v-for="(btn, bIdx) in (event.imageBtns || [event.imageBtn])" :key="bIdx"
+                                        @click.stop="openImagePreview(btn.url)" 
                                         class="w-full py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white text-sm font-bold rounded-lg shadow-md transition-all flex items-center justify-center gap-2 animate-pulse">
-                                    <i class="fas fa-book-open"></i> {{ event.imageBtn.text }}
+                                    <i class="fas fa-book-open"></i> {{ btn.text }}
                                 </button>
                             </div>
 
-                            <!-- 圖片直接顯示 -->
+                            <!-- 圖片直接顯示 (相容舊設定) -->
                             <div v-if="event.image" class="mt-3 mb-1">
                                 <div class="relative group rounded-lg overflow-hidden border border-gray-200 shadow-sm" @click.stop="openImagePreview(event.image)">
                                     <img :src="event.image" class="w-full h-auto object-cover" alt="Event Image">
@@ -143,7 +142,7 @@
         </transition>
     </div>
 
-    <!-- 3. 底部導航列 -->
+    <!-- 底部導航列 -->
     <div class="fixed bottom-0 w-full max-w-md bg-gray-900/60 backdrop-blur-xl border-t border-white/10 z-30 safe-bottom shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
         <div class="flex overflow-x-auto no-scrollbar py-3 px-2 space-x-2" id="day-nav-container">
             <button v-for="(day, index) in tripData" :key="index"
@@ -194,11 +193,8 @@ createApp({
         const showModal = ref(false);
         const modalContent = ref('');
         const transitionName = ref('slide-left');
-        
         const showImageModal = ref(false);
         const previewImageUrl = ref('');
-
-        // 手勢變數
         const touchStartX = ref(0);
         const touchEndX = ref(0);
 
@@ -280,7 +276,12 @@ createApp({
                 rain: "20%",
                 bgImage: "https://images.unsplash.com/photo-1528164344705-475426879893?q=80&w=1000&auto=format&fit=crop",
                 events: [
-                    { time: "09:00", icon: "mountain", title: "富士急樂園", desc: "不一定要玩設施，可逛逛拍照", map: "https://maps.app.goo.gl/iC1bCBTwqu2G5jWG6" },
+                    { 
+                        time: "09:00", icon: "mountain", title: "富士急樂園", desc: "不一定要玩設施，可逛逛拍照", map: "https://maps.app.goo.gl/iC1bCBTwqu2G5jWG6"
+                        imageBtns: [
+                            { text: "富士急樂園地圖", url: "https://i.postimg.cc/Cxz1vMkb/tu-pian2.jpg" }
+                        ],
+                    },
                     { time: "13:00", icon: "food", title: "午餐", desc: "看情況" },
                     { time: "14:30", icon: "shrine", title: "河口淺間神社", desc: "千年杉樹，神聖氛圍", map: "https://maps.app.goo.gl/LAqQu3nCeRktFSe77" },
                     { time: "15:45", icon: "camera", title: "河口湖楓葉迴廊", desc: "欣賞紅葉與富士山", map: "https://maps.app.goo.gl/1wonW3iEEUmnBdC58" },
@@ -344,8 +345,11 @@ createApp({
                         icon: "train", 
                         title: "出發！", 
                         desc: "記得帶早餐，預計6:30抵達排隊",
-                        imageBtn: { text: "新手須知 !", url: "https://i.postimg.cc/tJLdYnzj/xin-shou-xu-zhi.jpg" },
-                        imageBtn: { text: "迪士尼地圖", url: "https://i.postimg.cc/Vk3Vt5Db/TDL-map-tc.png" }] 
+                        // ★★★ 修改處：改成 imageBtns 陣列，這樣可以支援多顆按鈕 ★★★
+                        imageBtns: [
+                            { text: "新手須知 !", url: "https://i.postimg.cc/tJLdYnzj/xin-shou-xu-zhi.jpg" },
+                            { text: "迪士尼地圖", url: "https://i.postimg.cc/Vk3Vt5Db/TDL-map-tc.png" }
+                        ], 
                     },
                     { time: "08:30", icon: "disney", title: "夢幻樂園攻略", desc: "1. 美女與野獸 (首選)\n2. 小熊維尼獵蜜記\n3. 幽靈公館\n4. 米奇魔法音樂世界", modal: "夢幻樂園清單:\n1.美女與野獸\n2.小熊維尼獵蜜記\n3.白雪公主冒險旅程\n4.幽靈公館\n5.愛麗絲的午茶派對\n6.小飛象\n7.小飛俠天空之旅\n8.小木偶奇遇記\n9.城堡旋轉木馬\n10.仙履奇緣童話大廳\n11.米奇魔法音樂世界(25分)" },
                     { time: "12:45", icon: "star", title: "玩具奇妙聖誕遊行", desc: "白天遊行 (45分鐘)"},
@@ -409,7 +413,6 @@ createApp({
             });
         };
 
-        // --- 手勢相關邏輯 ---
         const onTouchStart = (e) => {
             touchStartX.value = e.changedTouches[0].screenX;
         };
@@ -420,20 +423,13 @@ createApp({
         };
 
         const handleSwipe = () => {
-            const threshold = 50; // 最小滑動距離
+            const threshold = 50;
             const diff = touchStartX.value - touchEndX.value;
-
             if (Math.abs(diff) > threshold) {
                 if (diff > 0) {
-                    // 向左滑 -> 下一天
-                    if (currentDayIndex.value < tripData.length - 1) {
-                        goToDay(currentDayIndex.value + 1);
-                    }
+                    if (currentDayIndex.value < tripData.length - 1) goToDay(currentDayIndex.value + 1);
                 } else {
-                    // 向右滑 -> 上一天
-                    if (currentDayIndex.value > 0) {
-                        goToDay(currentDayIndex.value - 1);
-                    }
+                    if (currentDayIndex.value > 0) goToDay(currentDayIndex.value - 1);
                 }
             }
         };
@@ -472,7 +468,6 @@ createApp({
             previewImageUrl,
             openImagePreview,
             closeImagePreview,
-            // 手勢函式
             onTouchStart,
             onTouchEnd
         };
