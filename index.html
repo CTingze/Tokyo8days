@@ -13,9 +13,9 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #1a1a1a;
             -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none; /* 防止下拉重整干擾 */
         }
         
-        /* 隱藏捲軸但保留功能 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
@@ -49,23 +49,27 @@
 
 <div id="app" class="max-w-md mx-auto min-h-screen relative pb-32 overflow-hidden bg-gray-900 select-none">
 
-    <!-- ★ 動態背景層 -->
+    <!-- 背景層 -->
     <div class="fixed inset-0 z-0 bg-cover bg-center transition-all duration-700 ease-in-out"
          :style="{ backgroundImage: `url(${currentDayData.bgImage})` }">
         <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-[2px]"></div>
     </div>
 
-    <!-- ★ 內容區 -->
-    <div class="relative z-10 min-h-screen">
+    <!-- 內容區：加入觸控監聽 -->
+    <div class="relative z-10 min-h-screen" 
+         @touchstart="onTouchStart" 
+         @touchend="onTouchEnd">
+         
         <transition :name="transitionName" mode="out-in">
             <div :key="currentDayIndex" class="w-full">
                 
-                <!-- 1. 頂部資訊卡 -->
-                <div class="bg-gradient-to-r from-red-600/90 to-orange-600/90 backdrop-blur-md text-white p-6 rounded-b-3xl shadow-lg sticky top-0 z-20">
+                <!-- 1. 頂部資訊卡 (日期置頂) -->
+                <!-- 修改：z-40 確保層級最高，backdrop-blur-xl 加強模糊，確保滑動時日期清楚可見 -->
+                <div class="bg-gradient-to-r from-red-600/95 to-orange-600/95 backdrop-blur-xl text-white p-6 rounded-b-3xl shadow-xl sticky top-0 z-40 transition-all duration-300 border-b border-white/10">
                     <div class="flex justify-between items-start">
                         <div>
                             <h2 class="text-sm text-yellow-300 font-bold tracking-wider drop-shadow-sm">TOKYO TRIP 2025</h2>
-                            <h1 class="text-3xl font-bold mt-1 drop-shadow-md">{{ currentDayData.date }}</h1>
+                            <h1 class="text-3xl font-bold mt-1 drop-shadow-md tracking-wide">{{ currentDayData.date }}</h1>
                             <div class="flex items-center mt-2 gap-2">
                                 <i class="fas fa-map-marker-alt text-white/90"></i>
                                 <span class="font-medium text-white/95">{{ currentDayData.location }}</span>
@@ -82,7 +86,7 @@
                 </div>
 
                 <!-- 2. 行程時間軸 -->
-                <div class="p-4 mt-2 space-y-2">
+                <div class="p-4 mt-2 space-y-2 pb-10">
                     <div v-for="(event, index) in currentDayData.events" :key="index" 
                          class="relative flex gap-4 animate-fade-in"
                          :style="{ animationDelay: `${index * 0.05}s` }"
@@ -105,7 +109,27 @@
                             </div>
                             <p v-if="event.desc" class="text-gray-500 text-sm mt-2 leading-relaxed whitespace-pre-line">{{ event.desc }}</p>
 
-                            <!-- 按鈕 -->
+                            <!-- 新手須知按鈕 -->
+                            <div v-if="event.imageBtn" class="mt-3">
+                                <button @click.stop="openImagePreview(event.imageBtn.url)" 
+                                        class="w-full py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white text-sm font-bold rounded-lg shadow-md transition-all flex items-center justify-center gap-2 animate-pulse">
+                                    <i class="fas fa-book-open"></i> {{ event.imageBtn.text }}
+                                </button>
+                            </div>
+
+                            <!-- 圖片直接顯示 -->
+                            <div v-if="event.image" class="mt-3 mb-1">
+                                <div class="relative group rounded-lg overflow-hidden border border-gray-200 shadow-sm" @click.stop="openImagePreview(event.image)">
+                                    <img :src="event.image" class="w-full h-auto object-cover" alt="Event Image">
+                                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 flex items-center justify-center transition-all">
+                                        <div class="bg-black/50 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm flex items-center gap-1">
+                                            <i class="fas fa-search-plus"></i> 點擊放大
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 一般按鈕區 -->
                             <div class="mt-3 flex flex-wrap gap-2">
                                 <a v-if="event.map && !event.navs" :href="event.map" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 text-xs font-bold rounded-full hover:bg-blue-100 transition-colors"><i class="fas fa-location-arrow"></i> 導航</a>
                                 <a v-for="(nav, i) in event.navs" :key="i" :href="nav.url" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 text-xs font-bold rounded-full hover:bg-blue-100 transition-colors border border-blue-100"><i :class="nav.label.includes('停車') ? 'fas fa-square-parking' : 'fas fa-location-arrow'"></i> {{ nav.label }}</a>
@@ -119,15 +143,9 @@
         </transition>
     </div>
 
-    <!-- 3. ★ 底部單手導航列 (修改版：深色毛玻璃風格) -->
-    <!-- 
-         bg-gray-900/60: 黑色背景 60% 透明度
-         backdrop-blur-xl: 強力毛玻璃模糊
-         border-white/10: 極細的亮色邊框
-    -->
+    <!-- 3. 底部導航列 -->
     <div class="fixed bottom-0 w-full max-w-md bg-gray-900/60 backdrop-blur-xl border-t border-white/10 z-30 safe-bottom shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
         <div class="flex overflow-x-auto no-scrollbar py-3 px-2 space-x-2" id="day-nav-container">
-            <!-- 每一天的按鈕 -->
             <button v-for="(day, index) in tripData" :key="index"
                     @click="goToDay(index)"
                     :id="'day-btn-' + index"
@@ -135,20 +153,15 @@
                     :class="index === currentDayIndex 
                         ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)] scale-105 border-transparent' 
                         : 'bg-white/5 text-gray-400 border-white/5 hover:bg-white/10'">
-                
                 <span class="text-[10px] font-medium opacity-60">Day</span>
                 <span class="text-xl font-bold leading-none">{{ index + 1 }}</span>
-                
-                <!-- 當選中時顯示小日期 -->
                 <span v-if="index === currentDayIndex" class="text-[9px] mt-0.5 opacity-90 font-light tracking-tight">{{ day.date.split('/')[1].split(' ')[0] }}</span>
             </button>
-            
-            <!-- 佔位符 -->
             <div class="w-2 flex-shrink-0"></div>
         </div>
     </div>
 
-    <!-- Modal (Popup) -->
+    <!-- 文字 Modal -->
     <div v-if="showModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in" @click="closeModal">
         <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl transform transition-all" @click.stop>
             <div class="bg-gray-50 px-5 py-4 border-b border-gray-100 flex justify-between items-center">
@@ -159,6 +172,17 @@
             <div class="p-4 border-t border-gray-100"><button @click="closeModal" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-colors">關閉</button></div>
         </div>
     </div>
+
+    <!-- 圖片放大預覽 Modal -->
+    <div v-if="showImageModal" class="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-2 animate-fade-in cursor-zoom-out" @click="closeImagePreview">
+        <div class="relative max-w-full max-h-full">
+            <button @click="closeImagePreview" class="absolute -top-10 right-0 text-white/80 hover:text-white p-2">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+            <img :src="previewImageUrl" class="max-w-full max-h-[90vh] rounded-lg shadow-2xl object-contain" @click.stop>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -170,6 +194,13 @@ createApp({
         const showModal = ref(false);
         const modalContent = ref('');
         const transitionName = ref('slide-left');
+        
+        const showImageModal = ref(false);
+        const previewImageUrl = ref('');
+
+        // 手勢變數
+        const touchStartX = ref(0);
+        const touchEndX = ref(0);
 
         const getIconClass = (type) => {
             const map = { plane: 'fas fa-plane', train: 'fas fa-train', food: 'fas fa-utensils', bus: 'fas fa-bus', car: 'fas fa-car', walk: 'fas fa-walking', hotel: 'fas fa-bed', camera: 'fas fa-camera', shrine: 'fas fa-torii-gate', mountain: 'fas fa-mountain', star: 'fas fa-star', shop: 'fas fa-shopping-bag', disney: 'fas fa-wand-magic-sparkles', info: 'fas fa-info' };
@@ -186,7 +217,7 @@ createApp({
                 location: "台北 ➔ 東京",
                 temp: "9°C~15°C",
                 rain: "30%",
-                bgImage: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?q=80&w=1000&auto=format&fit=crop", // 東京鐵塔夜景
+                bgImage: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?q=80&w=1000&auto=format&fit=crop", 
                 events: [
                     { time: "11:36", icon: "train", title: "出發前往台北", desc: "11:36～12:39"},
                     { time: "13:00", icon: "food", title: "劉山東牛肉麵", desc: "必吃！建議提早排隊。", map: "https://maps.app.goo.gl/J4eh8aLS9BR8HJUK8", tag: "午餐" },
@@ -199,7 +230,7 @@ createApp({
                 location: "富士山 (自駕)",
                 temp: "2°C~15°C",
                 rain: "60%",
-                bgImage: "https://images.unsplash.com/photo-1490806843957-31f4c9a91c65?q=80&w=1000&auto=format&fit=crop", // 富士山
+                bgImage: "https://images.unsplash.com/photo-1490806843957-31f4c9a91c65?q=80&w=1000&auto=format&fit=crop", 
                 events: [
                     { 
                         time: "11:30", icon: "food", title: "午餐：山梨名物", desc: "Taihou(大豊) or 小作 山中湖店 or Mori no Aruma", 
@@ -247,7 +278,7 @@ createApp({
                 location: "河口湖周邊",
                 temp: "-1°C~13°C",
                 rain: "20%",
-                bgImage: "https://images.unsplash.com/photo-1528164344705-475426879893?q=80&w=1000&auto=format&fit=crop", // 紅葉迴廊
+                bgImage: "https://images.unsplash.com/photo-1528164344705-475426879893?q=80&w=1000&auto=format&fit=crop",
                 events: [
                     { time: "09:00", icon: "mountain", title: "富士急樂園", desc: "不一定要玩設施，可逛逛拍照", map: "https://maps.app.goo.gl/iC1bCBTwqu2G5jWG6" },
                     { time: "13:00", icon: "food", title: "午餐", desc: "看情況" },
@@ -261,7 +292,7 @@ createApp({
                 location: "高尾山 ➔ 東京",
                 temp: "2°C~17°C",
                 rain: "20%",
-                bgImage: "https://images.unsplash.com/photo-1570597375253-1574d754f9d4?q=80&w=1000&auto=format&fit=crop", // 銀座/都會
+                bgImage: "https://images.unsplash.com/photo-1570597375253-1574d754f9d4?q=80&w=1000&auto=format&fit=crop",
                 events: [
                     { time: "06:30", icon: "car", title: "飯店出發", desc: "早起出發前往高尾山" },
                     { time: "07:45", icon: "mountain", title: "高尾山祈祷所 駐車場", desc: "抵達停車場，準備上山", map: "https://maps.app.goo.gl/Ha3McdR8ZnQp4vQm8" },
@@ -290,7 +321,7 @@ createApp({
                 location: "淺草 ➔ 明治神宮",
                 temp: "10°C~18°C",
                 rain: "10%",
-                bgImage: "https://images.unsplash.com/photo-1583935294520-2b0b47df43ce?q=80&w=1000&auto=format&fit=crop", // 淺草寺/雷門
+                bgImage: "https://images.unsplash.com/photo-1583935294520-2b0b47df43ce?q=80&w=1000&auto=format&fit=crop",
                 events: [
                     { time: "09:00", icon: "camera", title: "和裝工房雅 穿和服", desc: "預約攝影1小時", map: "https://maps.app.goo.gl/KY6Two5HtD9icBJu7" },
                     { time: "11:00", icon: "shrine", title: "淺草寺 + 雷門", desc: "必吃：抹茶冰淇淋、炸肉餅", map: "https://maps.app.goo.gl/zUAF6jz8hN1S91FU7" },
@@ -306,9 +337,16 @@ createApp({
                 location: "東京迪士尼樂園",
                 temp: "6°C~14°C",
                 rain: "20%",
-                bgImage: "https://images.unsplash.com/photo-1545562083-c583d060a12e?q=80&w=1000&auto=format&fit=crop", // 迪士尼城堡
+                bgImage: "https://images.unsplash.com/photo-1545562083-c583d060a12e?q=80&w=1000&auto=format&fit=crop",
                 events: [
-                    { time: "06:00", icon: "train", title: "出發！", desc: "記得帶早餐，預計6:30抵達排隊", navs: [{ label: "地圖", url: "chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://media2.tokyodisneyresort.jp/home/download/map/TDL_map_tc.pdf" }] },
+                    { 
+                        time: "06:00", 
+                        icon: "train", 
+                        title: "出發！", 
+                        desc: "記得帶早餐，預計6:30抵達排隊",
+                        imageBtn: { text: "新手須知 !", url: "https://i.postimg.cc/tJLdYnzj/xin-shou-xu-zhi.jpg" },
+                        navs: [{ label: "地圖", url: "chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://media2.tokyodisneyresort.jp/home/download/map/TDL_map_tc.pdf" }] 
+                    },
                     { time: "08:30", icon: "disney", title: "夢幻樂園攻略", desc: "1. 美女與野獸 (首選)\n2. 小熊維尼獵蜜記\n3. 幽靈公館\n4. 米奇魔法音樂世界", modal: "夢幻樂園清單:\n1.美女與野獸\n2.小熊維尼獵蜜記\n3.白雪公主冒險旅程\n4.幽靈公館\n5.愛麗絲的午茶派對\n6.小飛象\n7.小飛俠天空之旅\n8.小木偶奇遇記\n9.城堡旋轉木馬\n10.仙履奇緣童話大廳\n11.米奇魔法音樂世界(25分)" },
                     { time: "12:45", icon: "star", title: "玩具奇妙聖誕遊行", desc: "白天遊行 (45分鐘)"},
                     { time: "14:00", icon: "disney", title: "卡通/明日/西部樂園", desc: "怪獸電力公司、杯麵、巴斯光年\n巨雷山、加勒比海盜", modal: "卡通城:\n米奇魔法交響樂、米奇公館、米妮風格工作室\n\n明日樂園:\n1.怪獸電力公司\n2.杯麵\n3.巴斯光年\n4.幸會史迪奇\n\n探索/西部:\n加勒比海盜、巨雷山" },
@@ -321,7 +359,7 @@ createApp({
                 location: "木更津 Outlet",
                 temp: "2°C~17°C",
                 rain: "20%",
-                bgImage: "https://images.unsplash.com/photo-1472851294608-415522f97817?q=80&w=1000&auto=format&fit=crop", // 購物/商場
+                bgImage: "https://images.unsplash.com/photo-1472851294608-415522f97817?q=80&w=1000&auto=format&fit=crop",
                 events: [
                     { time: "08:00", icon: "train", title: "前往東京車站", desc: "搭乘銀座線至京橋(東京)站", map: "https://maps.app.goo.gl/SqMZeFVE6SrG1nHs9" },
                     { time: "08:30", icon: "bus", title: "巴士總站東京八重洲", desc: "準備搭乘高速巴士", map: "https://maps.app.goo.gl/fXok2rLSbjGNsept8" },
@@ -344,7 +382,7 @@ createApp({
                 location: "東京 ➔ 台北",
                 temp: "2°C~17°C",
                 rain: "20%",
-                bgImage: "https://images.unsplash.com/photo-1542332205-4da5aa64a929?q=80&w=1000&auto=format&fit=crop", // 飛機/藍天
+                bgImage: "https://images.unsplash.com/photo-1542332205-4da5aa64a929?q=80&w=1000&auto=format&fit=crop", 
                 events: [
                     { time: "10:00", icon: "walk", title: "前往地鐵站", desc: "從地面往南走到駒形橋前方的都營地鐵淺草線「A2b」入口 (有電梯)", navs: [{ label: "交通方式", url: "https://lazyjapan.com/regions/tokyo/transport/airport/haneda/from-asakusa.html" }] },
                     { time: "11:00", icon: "plane", title: "抵達羽田機場 T3", desc: "最後逛街衝刺！",navs: [{ label: "羽田機場必買伴手禮", url: "https://wind.suzukihiro.tw/haneda-airport-gift2025/" }] },
@@ -361,7 +399,6 @@ createApp({
             currentDayIndex.value = index;
             window.scrollTo(0, 0);
 
-            // 自動捲動底部導航列
             nextTick(() => {
                 const container = document.getElementById('day-nav-container');
                 const btn = document.getElementById('day-btn-' + index);
@@ -372,6 +409,35 @@ createApp({
             });
         };
 
+        // --- 手勢相關邏輯 ---
+        const onTouchStart = (e) => {
+            touchStartX.value = e.changedTouches[0].screenX;
+        };
+
+        const onTouchEnd = (e) => {
+            touchEndX.value = e.changedTouches[0].screenX;
+            handleSwipe();
+        };
+
+        const handleSwipe = () => {
+            const threshold = 50; // 最小滑動距離
+            const diff = touchStartX.value - touchEndX.value;
+
+            if (Math.abs(diff) > threshold) {
+                if (diff > 0) {
+                    // 向左滑 -> 下一天
+                    if (currentDayIndex.value < tripData.length - 1) {
+                        goToDay(currentDayIndex.value + 1);
+                    }
+                } else {
+                    // 向右滑 -> 上一天
+                    if (currentDayIndex.value > 0) {
+                        goToDay(currentDayIndex.value - 1);
+                    }
+                }
+            }
+        };
+
         const openModal = (event) => {
             modalContent.value = event.modal || event.desc;
             showModal.value = true;
@@ -379,6 +445,15 @@ createApp({
 
         const closeModal = () => {
             showModal.value = false;
+        };
+
+        const openImagePreview = (url) => {
+            previewImageUrl.value = url;
+            showImageModal.value = true;
+        };
+
+        const closeImagePreview = () => {
+            showImageModal.value = false;
         };
 
         return {
@@ -392,7 +467,14 @@ createApp({
             closeModal,
             getIconClass,
             getIconColor,
-            transitionName
+            transitionName,
+            showImageModal,
+            previewImageUrl,
+            openImagePreview,
+            closeImagePreview,
+            // 手勢函式
+            onTouchStart,
+            onTouchEnd
         };
     }
 }).mount('#app');
