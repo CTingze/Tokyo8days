@@ -108,10 +108,12 @@
                             <p v-if="event.desc" class="text-gray-500 text-sm mt-2 leading-relaxed whitespace-pre-line">{{ event.desc }}</p>
 
                             <!-- ★★★ 修改處：支援多顆粉紅色圖片按鈕 (已縮小並排) ★★★ -->
+                            <!-- ★★★ 修改處：支援個別按鈕設定 100% 寬度 ★★★ -->
                             <div v-if="event.imageBtns || event.imageBtn" class="mt-2 flex flex-wrap gap-2">
                                 <button v-for="(btn, bIdx) in (event.imageBtns || [event.imageBtn])" :key="bIdx"
                                         @click.stop="openImagePreview(btn.url)" 
-                                        class="flex-1 min-w-[40%] py-1.5 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white text-xs font-bold rounded-lg shadow-sm transition-all flex items-center justify-center gap-1.5 animate-pulse">
+                                        :class="btn.full ? 'w-full' : 'flex-1 min-w-[40%]'"
+                                        class="py-1.5 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white text-xs font-bold rounded-lg shadow-sm transition-all flex items-center justify-center gap-1.5 animate-pulse">
                                     <i class="fas fa-book-open"></i> {{ btn.text }}
                                 </button>
                             </div>
@@ -349,6 +351,8 @@ createApp({
                         imageBtns: [
                             { text: "新手須知 !", url: "https://i.postimg.cc/tJLdYnzj/xin-shou-xu-zhi.jpg" },
                             { text: "排隊位置", url: "https://i.postimg.cc/pTSdKg1J/lu-de-pai-dui-jian-yi-wei-zhi.jpg" },
+                            { text: "陸地DPA費用", url: "https://i.postimg.cc/4d9DFqx7/DPA-lu-de.jpg" },
+                            { text: "迪士尼地圖", url: "https://i.postimg.cc/Vk3Vt5Db/TDL-map-tc.png" },
                         ], 
                     },
                     { 
@@ -357,9 +361,7 @@ createApp({
                         title: "入園！", 
                         desc: "都市傳說抽ER：HE入園的時間不抽，等一般入園時間到才抽，增加抽中機率",
                         imageBtns: [
-                            { text: "陸地DPA費用", url: "https://i.postimg.cc/4d9DFqx7/DPA-lu-de.jpg" },
-                            { text: "迪士尼地圖", url: "https://i.postimg.cc/Vk3Vt5Db/TDL-map-tc.png" },
-                            { text: "Show的注意事項!", url: "https://i.postimg.cc/wMxVZ458/Show-de-zhu-yi-shi-xiang.png" },
+                            { text: "Show的注意事項!", url: "https://i.postimg.cc/wMxVZ458/Show-de-zhu-yi-shi-xiang.png"full: true },
                             { text: "MMM地圖", url: "https://i.postimg.cc/pL4yS0bN/mi-qi-mo-fa-yin-le-shi-jie-de-tu.jpg" },
                             { text: "MMM觀賞區", url: "https://i.postimg.cc/ZKqR5kJ9/mi-qi-mo-fa-yin-le-shi-jie-guan-shang-qu.jpg" },
                             { text: "CMB地圖", url: "https://i.postimg.cc/yNCs92Ck/mi-qi-jie-zou-ju-le-bu-de-tu.jpg" },
