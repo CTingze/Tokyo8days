@@ -107,11 +107,11 @@
                             </div>
                             <p v-if="event.desc" class="text-gray-500 text-sm mt-2 leading-relaxed whitespace-pre-line">{{ event.desc }}</p>
 
-                            <!-- ★★★ 修改處：支援多顆粉紅色圖片按鈕 ★★★ -->
-                            <div v-if="event.imageBtns || event.imageBtn" class="mt-3 space-y-2">
+                            <!-- ★★★ 修改處：支援多顆粉紅色圖片按鈕 (已縮小並排) ★★★ -->
+                            <div v-if="event.imageBtns || event.imageBtn" class="mt-2 flex flex-wrap gap-2">
                                 <button v-for="(btn, bIdx) in (event.imageBtns || [event.imageBtn])" :key="bIdx"
                                         @click.stop="openImagePreview(btn.url)" 
-                                        class="w-full py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white text-sm font-bold rounded-lg shadow-md transition-all flex items-center justify-center gap-2 animate-pulse">
+                                        class="flex-1 py-1.5 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white text-xs font-bold rounded-lg shadow-sm transition-all flex items-center justify-center gap-1.5 animate-pulse">
                                     <i class="fas fa-book-open"></i> {{ btn.text }}
                                 </button>
                             </div>
@@ -348,6 +348,7 @@ createApp({
                         // ★★★ 修改處：改成 imageBtns 陣列，這樣可以支援多顆按鈕 ★★★
                         imageBtns: [
                             { text: "新手須知 !", url: "https://i.postimg.cc/tJLdYnzj/xin-shou-xu-zhi.jpg" },
+                            { text: "陸地DPA費用", url: "https://i.postimg.cc/4d9DFqx7/DPA-lu-de.jpg" },
                             { text: "迪士尼地圖", url: "https://i.postimg.cc/Vk3Vt5Db/TDL-map-tc.png" }
                         ], 
                     },
