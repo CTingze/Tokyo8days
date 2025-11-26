@@ -16,6 +16,8 @@
  
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Panzoom 縮放外掛 -->
+    <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
@@ -193,25 +195,36 @@
 
     <!-- 圖片放大預覽 Modal -->
     <!-- ★★★ 修改處：多媒體預覽 Modal (支援圖片/YouTube/影片) ★★★ -->
-    <div v-if="showImageModal" class="fixed inset-0 bg-black/95 z-[60] flex items-center justify-center p-2 animate-fade-in" @click="closeImagePreview">
-        <div class="relative w-full max-w-4xl max-h-full flex flex-col items-center justify-center">
+    <!-- ★★★ 修改處：支援雙指縮放的多媒體預覽 Modal ★★★ -->
+    <div v-if="showImageModal" class="fixed inset-0 bg-black/95 z-[60] flex items-center justify-center overflow-hidden" @click="closeImagePreview">
+        
+        <!-- 關閉按鈕 -->
+        <button @click="closeImagePreview" class="absolute top-4 right-4 text-white/80 hover:text-white p-2 z-50 bg-black/20 rounded-full backdrop-blur-sm">
+            <i class="fas fa-times text-2xl"></i>
+        </button>
+
+        <!-- 重置縮放按鈕 (僅在圖片模式顯示) -->
+        <button v-if="previewType === 'image'" @click.stop="resetZoom" class="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white/90 border border-white/30 px-4 py-1.5 rounded-full text-sm backdrop-blur-md z-50 shadow-lg">
+            <i class="fas fa-compress-arrows-alt mr-1"></i> 還原大小
+        </button>
+
+        <div class="w-full h-full flex items-center justify-center p-2" @click.stop>
             
-            <!-- 關閉按鈕 -->
-            <button @click="closeImagePreview" class="absolute -top-12 right-0 text-white/80 hover:text-white p-2 z-50">
-                <i class="fas fa-times text-2xl"></i>
-            </button>
+            <!-- 情況 A: 顯示圖片 (加入 ref="zoomImage") -->
+            <!-- object-contain 確保圖片完整顯示，max-h-none 解除高度限制讓縮放更自由 -->
+            <img v-if="previewType === 'image'" 
+                 ref="zoomImage" 
+                 :src="previewImageUrl" 
+                 class="max-w-full max-h-full object-contain transition-transform duration-75 ease-out" 
+                 alt="Preview">
 
-            <!-- 情況 A: 顯示圖片 -->
-            <img v-if="previewType === 'image'" :src="previewImageUrl" class="max-w-full max-h-[80vh] rounded-lg shadow-2xl object-contain" @click.stop>
-
-            <!-- 情況 B: 顯示 YouTube (使用 iframe) -->
-            <div v-else-if="previewType === 'youtube'" class="w-full aspect-video bg-black rounded-lg overflow-hidden shadow-2xl" @click.stop>
+            <!-- 情況 B: 顯示 YouTube -->
+            <div v-else-if="previewType === 'youtube'" class="w-full max-w-4xl aspect-video bg-black rounded-lg overflow-hidden shadow-2xl">
                 <iframe :src="previewImageUrl" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
             </div>
 
             <!-- 情況 C: 顯示 MP4 影片 -->
-            <video v-else-if="previewType === 'video'" :src="previewImageUrl" class="max-w-full max-h-[80vh] rounded-lg shadow-2xl" controls autoplay playsinline @click.stop></video>
-
+            <video v-else-if="previewType === 'video'" :src="previewImageUrl" class="w-full max-w-4xl max-h-[80vh] rounded-lg shadow-2xl" controls autoplay playsinline></video>
         </div>
     </div>
 
@@ -228,10 +241,16 @@ createApp({
         const transitionName = ref('slide-left');
         const showImageModal = ref(false);
         const previewImageUrl = ref('');
-        const previewType = ref('image'); // 預設是圖片
-        // 修改後的打開函式
+        const previewType = ref('image'); 
+        const touchStartX = ref(0);
+        const touchEndX = ref(0);
+        
+        // ★ 新增：縮放相關變數
+        const zoomImage = ref(null); // 對應 HTML 裡的 ref="zoomImage"
+        let panzoomInstance = null;  // 存放縮放功能的實體
+
+        // ★ 修改後的開啟函式：加入 Panzoom 初始化
         const openImagePreview = (url, type = 'image') => {
-            // ★ 如果是連結類型，直接開新視窗(或喚醒APP)
             if (type === 'link') {
                 window.open(url, '_blank'); 
                 return;
@@ -240,9 +259,39 @@ createApp({
             previewImageUrl.value = url;
             previewType.value = type; 
             showImageModal.value = true;
+
+            // 如果是圖片，等待畫面渲染後啟動縮放功能
+            if (type === 'image') {
+                nextTick(() => {
+                    if (zoomImage.value) {
+                        // 初始化 Panzoom (設定最大放大倍率為 4 倍)
+                        panzoomInstance = Panzoom(zoomImage.value, {
+                            maxScale: 4,
+                            minScale: 1,
+                            contain: 'outside', // 限制拖曳範圍
+                        });
+                        // 啟用滑鼠滾輪縮放 (為了電腦版體驗)
+                        zoomImage.value.parentElement.addEventListener('wheel', panzoomInstance.zoomWithWheel);
+                    }
+                });
+            }
         };
-        const touchStartX = ref(0);
-        const touchEndX = ref(0);
+
+        // ★ 修改後的關閉函式：記得銷毀 Panzoom
+        const closeImagePreview = () => {
+            showImageModal.value = false;
+            if (panzoomInstance) {
+                panzoomInstance.destroy();
+                panzoomInstance = null;
+            }
+        };
+
+        // ★ 新增：還原縮放按鈕的功能
+        const resetZoom = () => {
+            if (panzoomInstance) {
+                panzoomInstance.reset();
+            }
+        };
 
         const getIconClass = (type) => {
             const map = { plane: 'fas fa-plane', train: 'fas fa-train', food: 'fas fa-utensils', bus: 'fas fa-bus', car: 'fas fa-car', walk: 'fas fa-walking', hotel: 'fas fa-bed', camera: 'fas fa-camera', shrine: 'fas fa-torii-gate', mountain: 'fas fa-mountain', star: 'fas fa-star', shop: 'fas fa-shopping-bag', disney: 'fas fa-wand-magic-sparkles', info: 'fas fa-info' };
@@ -453,8 +502,8 @@ createApp({
             {
                 date: "12/03 (三)",
                 location: "木更津 Outlet",
-                temp: "2°C~17°C",
-                rain: "20%",
+                temp: "8°C~15°C",
+                rain: "19%",
                 bgImage: "https://i.postimg.cc/Gh2RJ713/mitsui-kisarazu-00.jpg",
                 events: [
                     { time: "08:00", icon: "train", title: "前往東京車站", desc: "搭乘銀座線至京橋(東京)站", map: "https://maps.app.goo.gl/SqMZeFVE6SrG1nHs9" },
