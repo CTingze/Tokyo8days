@@ -525,13 +525,12 @@ createApp({
             showModal.value = false;
         };
 
-        const openImagePreview = (url) => {
-            previewImageUrl.value = url;
-            showImageModal.value = true;
-        };
-
         const closeImagePreview = () => {
             showImageModal.value = false;
+            setTimeout(() => {
+            previewType.value = 'image';
+            previewImageUrl.value = '';
+            }, 300);
         };
 
         return {
