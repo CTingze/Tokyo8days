@@ -109,12 +109,15 @@
 
                             <!-- ★★★ 修改處：支援多顆粉紅色圖片按鈕 (已縮小並排) ★★★ -->
                             <!-- ★★★ 修改處：支援個別按鈕設定 100% 寬度 ★★★ -->
+                            <!-- ★★★ 修改處：支援圖片與影片按鈕 ★★★ -->
                             <div v-if="event.imageBtns || event.imageBtn" class="mt-2 flex flex-wrap gap-2">
                                 <button v-for="(btn, bIdx) in (event.imageBtns || [event.imageBtn])" :key="bIdx"
-                                        @click.stop="openImagePreview(btn.url)" 
+                                        @click.stop="openImagePreview(btn.url, btn.type)" 
                                         :class="btn.full ? 'w-full' : 'flex-1 min-w-[40%]'"
                                         class="py-1.5 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white text-xs font-bold rounded-lg shadow-sm transition-all flex items-center justify-center gap-1.5 animate-pulse">
-                                    <i class="fas fa-book-open"></i> {{ btn.text }}
+                                    <!-- 圖示判斷：如果是 youtube 或 video 就顯示播放鍵，否則顯示書本 -->
+                                    <i :class="['fas', (btn.type === 'youtube' || btn.type === 'video') ? 'fa-play-circle' : 'fa-book-open']"></i> 
+                                    {{ btn.text }}
                                 </button>
                             </div>
 
@@ -175,12 +178,26 @@
     </div>
 
     <!-- 圖片放大預覽 Modal -->
-    <div v-if="showImageModal" class="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-2 animate-fade-in cursor-zoom-out" @click="closeImagePreview">
-        <div class="relative max-w-full max-h-full">
-            <button @click="closeImagePreview" class="absolute -top-10 right-0 text-white/80 hover:text-white p-2">
+    <!-- ★★★ 修改處：多媒體預覽 Modal (支援圖片/YouTube/影片) ★★★ -->
+    <div v-if="showImageModal" class="fixed inset-0 bg-black/95 z-[60] flex items-center justify-center p-2 animate-fade-in" @click="closeImagePreview">
+        <div class="relative w-full max-w-4xl max-h-full flex flex-col items-center justify-center">
+            
+            <!-- 關閉按鈕 -->
+            <button @click="closeImagePreview" class="absolute -top-12 right-0 text-white/80 hover:text-white p-2 z-50">
                 <i class="fas fa-times text-2xl"></i>
             </button>
-            <img :src="previewImageUrl" class="max-w-full max-h-[90vh] rounded-lg shadow-2xl object-contain" @click.stop>
+
+            <!-- 情況 A: 顯示圖片 -->
+            <img v-if="previewType === 'image'" :src="previewImageUrl" class="max-w-full max-h-[80vh] rounded-lg shadow-2xl object-contain" @click.stop>
+
+            <!-- 情況 B: 顯示 YouTube (使用 iframe) -->
+            <div v-else-if="previewType === 'youtube'" class="w-full aspect-video bg-black rounded-lg overflow-hidden shadow-2xl" @click.stop>
+                <iframe :src="previewImageUrl" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+
+            <!-- 情況 C: 顯示 MP4 影片 -->
+            <video v-else-if="previewType === 'video'" :src="previewImageUrl" class="max-w-full max-h-[80vh] rounded-lg shadow-2xl" controls autoplay playsinline @click.stop></video>
+
         </div>
     </div>
 
@@ -197,6 +214,13 @@ createApp({
         const transitionName = ref('slide-left');
         const showImageModal = ref(false);
         const previewImageUrl = ref('');
+        const previewType = ref('image'); // 預設是圖片
+        // 修改後的打開預覽函式
+        const openImagePreview = (url, type = 'image') => {
+            previewImageUrl.value = url;
+            previewType.value = type; // 設定類型
+            showImageModal.value = true;
+        };
         const touchStartX = ref(0);
         const touchEndX = ref(0);
 
@@ -353,6 +377,12 @@ createApp({
                             { text: "排隊位置", url: "https://i.postimg.cc/pTSdKg1J/lu-de-pai-dui-jian-yi-wei-zhi.jpg" },
                             { text: "陸地DPA費用", url: "https://i.postimg.cc/4d9DFqx7/DPA-lu-de.jpg" },
                             { text: "迪士尼地圖", url: "https://i.postimg.cc/Vk3Vt5Db/TDL-map-tc.png" },
+                            { 
+                                text: "迪士尼攻略影片", 
+                                url: "https://www.youtube.com/embed/VasyBuvCm08", 
+                                type: "youtube", 
+                                full: true 
+                            }
                         ], 
                     },
                     { 
@@ -509,7 +539,8 @@ createApp({
             openImagePreview,
             closeImagePreview,
             onTouchStart,
-            onTouchEnd
+            onTouchEnd,
+            previewType
         };
     }
 }).mount('#app');
