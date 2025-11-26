@@ -211,11 +211,14 @@
         <div class="w-full h-full flex items-center justify-center p-2" @click.stop>
             
             <!-- 情況 A: 顯示圖片 (加入 ref="zoomImage") -->
-            <!-- object-contain 確保圖片完整顯示，max-h-none 解除高度限制讓縮放更自由 -->
+            <!-- 1. 移除 object-contain (會干擾縮放) -->
+            <!-- 2. 加入 @load="onImageLoad" (確保圖片載入後才初始化) -->
+            <!-- 3. CSS 改為 w-auto h-auto (讓圖片保持原始比例) -->
             <img v-if="previewType === 'image'" 
                  ref="zoomImage" 
                  :src="previewImageUrl" 
-                 class="max-w-full max-h-full object-contain transition-transform duration-75 ease-out" 
+                 @load="onImageLoad"
+                 class="max-w-full max-h-[85vh] w-auto h-auto shadow-2xl rounded-lg transition-transform duration-75 ease-out" 
                  alt="Preview">
 
             <!-- 情況 B: 顯示 YouTube -->
@@ -619,7 +622,7 @@ createApp({
             onTouchStart,
             onTouchEnd,
             previewType,
-            // ★ 記得回傳這些變數
+             onImageLoad, 
             zoomImage,
             resetZoom
         };
