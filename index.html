@@ -115,8 +115,12 @@
                                         @click.stop="openImagePreview(btn.url, btn.type)" 
                                         :class="btn.full ? 'w-full' : 'flex-1 min-w-[40%]'"
                                         class="py-1.5 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white text-xs font-bold rounded-lg shadow-sm transition-all flex items-center justify-center gap-1.5 animate-pulse">
-                                    <!-- 圖示判斷：如果是 youtube 或 video 就顯示播放鍵，否則顯示書本 -->
-                                    <i :class="['fas', (btn.type === 'youtube' || btn.type === 'video') ? 'fa-play-circle' : 'fa-book-open']"></i> 
+                                    <!-- 修改圖示邏輯：加入 link 類型的判斷 -->
+                                    <i :class="[
+                                        'fas', 
+                                        (btn.type === 'youtube' || btn.type === 'video') ? 'fa-play-circle' : 
+                                        (btn.type === 'link' ? 'fa-brands fa-youtube' : 'fa-book-open')
+                                    ]"></i> 
                                     {{ btn.text }}
                                 </button>
                             </div>
@@ -215,10 +219,16 @@ createApp({
         const showImageModal = ref(false);
         const previewImageUrl = ref('');
         const previewType = ref('image'); // 預設是圖片
-        // 修改後的打開預覽函式
+        // 修改後的打開函式
         const openImagePreview = (url, type = 'image') => {
+            // ★ 如果是連結類型，直接開新視窗(或喚醒APP)
+            if (type === 'link') {
+                window.open(url, '_blank'); 
+                return;
+            }
+            
             previewImageUrl.value = url;
-            previewType.value = type; // 設定類型
+            previewType.value = type; 
             showImageModal.value = true;
         };
         const touchStartX = ref(0);
@@ -379,8 +389,10 @@ createApp({
                             { text: "迪士尼地圖", url: "https://i.postimg.cc/Vk3Vt5Db/TDL-map-tc.png" },
                             { 
                                 text: "滾球神人", 
-                                url: "https://www.youtube.com/embed/VasyBuvCm08", 
-                                type: "youtube", 
+                                // 改用一般網址
+                                url: "https://www.youtube.com/watch?v=VasyBuvCm08", 
+                                // 類型改成 link
+                                type: "link", 
                                 full: true 
                             },
                         ], 
