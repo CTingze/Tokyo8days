@@ -1,0 +1,20 @@
+{
+  "name": "東京富士山8日遊",
+  "short_name": "東京之旅",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#dc2626",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "東京APP封面.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
