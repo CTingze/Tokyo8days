@@ -214,11 +214,13 @@
             <!-- 1. 移除 object-contain (會干擾縮放) -->
             <!-- 2. 加入 @load="onImageLoad" (確保圖片載入後才初始化) -->
             <!-- 3. CSS 改為 w-auto h-auto (讓圖片保持原始比例) -->
+            <!-- 修改處：加回 object-contain，並強制設定 block -->
             <img v-if="previewType === 'image'" 
                  ref="zoomImage" 
                  :src="previewImageUrl" 
                  @load="onImageLoad"
-                 class="max-w-full max-h-[85vh] w-auto h-auto shadow-2xl rounded-lg transition-transform duration-75 ease-out" 
+                 class="max-w-full max-h-[85vh] object-contain mx-auto transition-transform duration-75 ease-out" 
+                 style="display: block;"
                  alt="Preview">
 
             <!-- 情況 B: 顯示 YouTube -->
@@ -248,60 +250,64 @@ createApp({
         const touchStartX = ref(0);
         const touchEndX = ref(0);
         
-        // ★ 縮放相關變數
+        // ★ 縮放變數
         const zoomImage = ref(null); 
         let panzoomInstance = null;  
 
-        // ★ 開啟預覽 (含初始化 Panzoom)
+        // ★ 開啟預覽
         const openImagePreview = (url, type = 'image') => {
             if (type === 'link') {
                 window.open(url, '_blank'); 
                 return;
             }
             
-            previewImageUrl.value = url;
-            previewType.value = type; 
-            showImageModal.value = true;
-
-            // 如果是圖片，等待 DOM 生成後初始化縮放
-            if (type === 'image') {
-                nextTick(() => {
-                    if (zoomImage.value) {
-                        // 初始化 Panzoom
-                        panzoomInstance = Panzoom(zoomImage.value, {
-                            maxScale: 4,
-                            minScale: 1,
-                            contain: 'outside',
-                            startScale: 1
-                        });
-                        // 啟用滑鼠滾輪縮放 (電腦版體驗)
-                        // 注意：parentElement 必須存在
-                        if(zoomImage.value.parentElement) {
-                            zoomImage.value.parentElement.addEventListener('wheel', panzoomInstance.zoomWithWheel);
-                        }
-                    }
-                });
-            }
-        };
-
-        // ★ 關閉預覽 (合併了銷毀邏輯與重置邏輯)
-        const closeImagePreview = () => {
-            showImageModal.value = false;
-            
-            // 1. 先銷毀 Panzoom 實體，避免殘留
+            // 清除舊的縮放狀態
             if (panzoomInstance) {
                 panzoomInstance.destroy();
                 panzoomInstance = null;
             }
 
-            // 2. 延遲重置圖片來源，讓關閉動畫跑完
+            previewImageUrl.value = url;
+            previewType.value = type; 
+            showImageModal.value = true;
+        };
+
+        // ★ 圖片載入完成後初始化 (修正全黑與無法縮放問題)
+        const onImageLoad = () => {
+            nextTick(() => {
+                if (zoomImage.value) {
+                    // 確保舊的已銷毀
+                    if (panzoomInstance) panzoomInstance.destroy();
+
+                    // 初始化 Panzoom
+                    panzoomInstance = Panzoom(zoomImage.value, {
+                        maxScale: 5,        
+                        minScale: 0.5,      
+                        startScale: 1,      
+                        contain: null, // ★ 關鍵：設為 null 讓圖片可以自由放大，不受邊界切裁
+                        animate: true       
+                    });
+
+                    // 啟用滾輪縮放
+                    if(zoomImage.value.parentElement) {
+                        zoomImage.value.parentElement.addEventListener('wheel', panzoomInstance.zoomWithWheel);
+                    }
+                }
+            });
+        };
+
+        const closeImagePreview = () => {
+            showImageModal.value = false;
+            if (panzoomInstance) {
+                panzoomInstance.destroy();
+                panzoomInstance = null;
+            }
             setTimeout(() => {
                 previewType.value = 'image';
                 previewImageUrl.value = '';
             }, 300);
         };
 
-        // ★ 還原縮放按鈕
         const resetZoom = () => {
             if (panzoomInstance) {
                 panzoomInstance.reset();
@@ -622,7 +628,7 @@ createApp({
             onTouchStart,
             onTouchEnd,
             previewType,
-             onImageLoad, 
+            onImageLoad, 
             zoomImage,
             resetZoom
         };
