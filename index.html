@@ -245,11 +245,11 @@ createApp({
         const touchStartX = ref(0);
         const touchEndX = ref(0);
         
-        // ★ 新增：縮放相關變數
-        const zoomImage = ref(null); // 對應 HTML 裡的 ref="zoomImage"
-        let panzoomInstance = null;  // 存放縮放功能的實體
+        // ★ 縮放相關變數
+        const zoomImage = ref(null); 
+        let panzoomInstance = null;  
 
-        // ★ 修改後的開啟函式：加入 Panzoom 初始化
+        // ★ 開啟預覽 (含初始化 Panzoom)
         const openImagePreview = (url, type = 'image') => {
             if (type === 'link') {
                 window.open(url, '_blank'); 
@@ -260,33 +260,45 @@ createApp({
             previewType.value = type; 
             showImageModal.value = true;
 
-            // 如果是圖片，等待畫面渲染後啟動縮放功能
+            // 如果是圖片，等待 DOM 生成後初始化縮放
             if (type === 'image') {
                 nextTick(() => {
                     if (zoomImage.value) {
-                        // 初始化 Panzoom (設定最大放大倍率為 4 倍)
+                        // 初始化 Panzoom
                         panzoomInstance = Panzoom(zoomImage.value, {
                             maxScale: 4,
                             minScale: 1,
-                            contain: 'outside', // 限制拖曳範圍
+                            contain: 'outside',
+                            startScale: 1
                         });
-                        // 啟用滑鼠滾輪縮放 (為了電腦版體驗)
-                        zoomImage.value.parentElement.addEventListener('wheel', panzoomInstance.zoomWithWheel);
+                        // 啟用滑鼠滾輪縮放 (電腦版體驗)
+                        // 注意：parentElement 必須存在
+                        if(zoomImage.value.parentElement) {
+                            zoomImage.value.parentElement.addEventListener('wheel', panzoomInstance.zoomWithWheel);
+                        }
                     }
                 });
             }
         };
 
-        // ★ 修改後的關閉函式：記得銷毀 Panzoom
+        // ★ 關閉預覽 (合併了銷毀邏輯與重置邏輯)
         const closeImagePreview = () => {
             showImageModal.value = false;
+            
+            // 1. 先銷毀 Panzoom 實體，避免殘留
             if (panzoomInstance) {
                 panzoomInstance.destroy();
                 panzoomInstance = null;
             }
+
+            // 2. 延遲重置圖片來源，讓關閉動畫跑完
+            setTimeout(() => {
+                previewType.value = 'image';
+                previewImageUrl.value = '';
+            }, 300);
         };
 
-        // ★ 新增：還原縮放按鈕的功能
+        // ★ 還原縮放按鈕
         const resetZoom = () => {
             if (panzoomInstance) {
                 panzoomInstance.reset();
@@ -294,7 +306,7 @@ createApp({
         };
 
         const getIconClass = (type) => {
-            const map = { plane: 'fas fa-plane', train: 'fas fa-train', food: 'fas fa-utensils', bus: 'fas fa-bus', car: 'fas fa-car', walk: 'fas fa-walking', hotel: 'fas fa-bed', camera: 'fas fa-camera', shrine: 'fas fa-torii-gate', mountain: 'fas fa-mountain', star: 'fas fa-star', shop: 'fas fa-shopping-bag', disney: 'fas fa-wand-magic-sparkles', info: 'fas fa-info' };
+            const map = { plane: 'fas fa-plane', train: 'fas fa-train', food: 'fas fa-utensils', bus: 'fas fa-bus', car: 'fas fa-car', walk: 'fas fa-walking', hotel: 'fas fa-bed', camera: 'fas fa-camera', shrine: 'fas fa-torii-gate', mountain: 'fas fa-mountain', star: 'fas fa-star', shop: 'fas fa-shopping-bag', disney: 'fas fa-wand-magic-sparkles', info: 'fas fa-info', water: 'fas fa-water' };
             return map[type] || 'fas fa-map-marker-alt';
         };
         const getIconColor = (type) => {
@@ -302,6 +314,7 @@ createApp({
             return map[type] || 'bg-gray-400';
         };
 
+        // ... 你的 tripData 資料保持不變 (因為太長這裡省略，請保留原有的資料) ...
         const tripData = [
             {
                 date: "11/27 (四)",
@@ -564,6 +577,9 @@ createApp({
         };
 
         const handleSwipe = () => {
+            // 如果正在顯示 Modal，不要觸發滑動換頁
+            if (showImageModal.value || showModal.value) return;
+
             const threshold = 50;
             const diff = touchStartX.value - touchEndX.value;
             if (Math.abs(diff) > threshold) {
@@ -584,14 +600,6 @@ createApp({
             showModal.value = false;
         };
 
-        const closeImagePreview = () => {
-            showImageModal.value = false;
-            setTimeout(() => {
-            previewType.value = 'image';
-            previewImageUrl.value = '';
-            }, 300);
-        };
-
         return {
             tripData,
             currentDayIndex,
@@ -610,7 +618,10 @@ createApp({
             closeImagePreview,
             onTouchStart,
             onTouchEnd,
-            previewType
+            previewType,
+            // ★ 記得回傳這些變數
+            zoomImage,
+            resetZoom
         };
     }
 }).mount('#app');
